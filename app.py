@@ -5,7 +5,7 @@ from threading import Lock
 from flask import Flask, render_template, session, request
 from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
-from game import Warewolf
+from game import SecretHitler
 
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
@@ -18,14 +18,15 @@ socketio = SocketIO(app, async_mode=async_mode)
 thread = None
 thread_lock = Lock()
 
-game = Warewolf(socketio)
+game = SecretHitler(socketio)
 
 def background_thread():
     game.run()        
 
 @app.route('/')
 def index():
-    return render_template('index.html', async_mode=socketio.async_mode)
+    # return render_template('index.html', async_mode=socketio.async_mode)
+    return render_template('test/form.html', async_mode=socketio.async_mode)
 
 
 @socketio.on('my_event', namespace='/test')
