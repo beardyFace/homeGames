@@ -1,0 +1,23 @@
+.App {
+  background-color: white;  
+  text-align: center;
+}
+
+.App-header {
+  border-bottom-color: grey;
+  border-bottom-width: 3px;
+  border-bottom-style: double;
+}
+
+.App-title {
+  max-height: 50px;
+}
+
+.App-content {
+  font-size: medium;
+}
+
+@keyframes App-logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
