@@ -34,7 +34,7 @@ class SecretHitler():
 	def __init__(self, socketio):
 		self.socketio = socketio
 
-		self.players = {}
+		self.players = {}#SID = player
 		self.state = SecretHitler.STATE_LOBBY
 
 		self.num_facists = 0
