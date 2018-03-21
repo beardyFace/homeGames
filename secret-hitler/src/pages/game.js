@@ -9,7 +9,7 @@ export default class Game extends React.Component {
       this.state = {
         socket:null,
         game_state:"lobby",
-        current_page:<Lobby data="Hello"></Lobby>
+        current_data:""
       };
       this.initSocket()  
       // const socket = openSocket('http://localhost:5000/test');
@@ -22,23 +22,30 @@ export default class Game extends React.Component {
         console.log("Connected");
       })
 
-      socket.on('my_response', this.handleResponse)
+      socket.on('my_response', function(data){
+        this.handleResponse(data)
+      }.bind(this))
 
       this.setState({socket})
       var game_state = "lobby"
       this.setState({game_state})
     }
 
-    handleResponse(data){
-      console.log(data);
-      //if state
-      // current_page = <Lobby data={game_data}></Lobby>
-      // else if state
+    handleResponse(data){      
+      this.setState({ 
+        current_data: data
+      });
     }
 
     render() {
-      const { current_page } = this.state;
-      return <div>{current_page}</div>
+      const { game_state, current_data } = this.state;
+      if(game_state == "lobby"){
+        return <div><Lobby data={this.state.current_data}></Lobby></div>
+      }
+      else{
+        console.log("Render div");
+        return <div></div>
+      }
     }
   }
 
