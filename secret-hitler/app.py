@@ -12,7 +12,7 @@ from game import SecretHitler
 # the best option based on installed packages.
 async_mode = None
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='./build', static_folder='./build/static')
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode=async_mode)
 thread = None
@@ -86,8 +86,10 @@ def test_connect():
         if thread is None:
             thread = socketio.start_background_task(target=background_thread)
 
+    print 'oh fuck it worked!!!'
     game.addPlayer(request.sid, {'name':'test_player'})
     emit('my_response', {'data': 'Connected', 'count': 0})
+    emit('my_response', {'name':'test_player'}, room=request.sid, namespace='/test')
 
 
 @socketio.on('disconnect', namespace='/test')
@@ -97,4 +99,4 @@ def test_disconnect():
     print('Client disconnected', request.sid)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=False)
