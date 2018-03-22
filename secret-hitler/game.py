@@ -16,7 +16,7 @@ class Player():
         self.eligable = True
 
     def reply(self, event, data):
-        self.socketio.emit(event, data, room=self.sid, namespace='/test')
+        self.socketio.emit(event, data, room=self.sid, namespace='/secret-hitler')
 
     def assignRole(self, role):
         self.role = role
@@ -68,21 +68,27 @@ class SecretHitler():
         #Executive action
 
 
-
     def addPlayer(self, sid, message):
+        print message
         new_player = Player(sid, self.socketio, message['name'])
         if self.state == SecretHitler.STATE_LOBBY:
             self.players[sid] = new_player
+            
+            names = []
             for player in self.players.values():
-                player.reply('my_response', {'data': 'Player '+new_player.name+' connected', 'count': 0})
+                names.append(player.name)
+
+            for player in self.players.values():
+                player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'data': names})
         else:
-            new_player.reply('my_response', {'data': 'Game has already started sorry!!'})
+            new_player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'data': 'Game has already started sorry!!'})
 
     def removePlayer(self, sid):
-        name = self.players[sid].name
-        del self.players[sid]
-        for player in self.players.values():
-            player.reply('my_response', {'data': 'Player '+name+' disconnected', 'count': 0})
+        if sid in self.players:
+            name = self.players[sid].name
+            del self.players[sid]
+            for player in self.players.values():
+                player.reply('my_response', {'data': 'Player '+name+' disconnected', 'count': 0})
 
     def processPlayerMessage(self, sid, message):
         # pass

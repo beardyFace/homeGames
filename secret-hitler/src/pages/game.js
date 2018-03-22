@@ -1,51 +1,64 @@
 import * as React from 'react';
 import Lobby from './lobby.js';
+import Join from './join.js';
 import openSocket from 'socket.io-client';
 
 export default class Game extends React.Component {
     
     constructor(props) {
       super(props);
-      this.state = {
-        socket:null,
-        game_state:"lobby",
-        current_data:""
-      };
-      this.initSocket()  
-      // const socket = openSocket('http://localhost:5000/test');
-      // socket.on('my_response', () => {console.log('holy shiiit it did a thing')})
-    }
 
-    initSocket = ()=>{
-      const socket = openSocket('http://localhost:5000/test');
+      const socket = openSocket('http://localhost:5000/secret-hitler');
+      
       socket.on('connect', ()=>{
         console.log("Connected");
       })
 
-      socket.on('my_response', function(data){
-        this.handleResponse(data)
+      socket.on('game_response', function(data){
+        this.handleGameResponse(data)
       }.bind(this))
 
-      this.setState({socket})
-      var game_state = "lobby"
-      this.setState({game_state})
+      this.state = {
+        socket:socket,
+        game_state:"",
+        current_page:<Join data={""} socket={socket}></Join>
+      };
     }
 
-    handleResponse(data){      
+    handleGameResponse(msg){
+      console.log("Game response");
+      console.log(msg)
+      var new_page = <div></div> 
+
+      var new_state = msg['state']
+      var data = msg['data']
+
+      const { socket } = this.state;
+
+      if(new_state == 0)//Lobby
+        new_page = <Lobby data={data} socket={socket}></Lobby> 
+      else if(new_state == 1)//Start
+        new_page = <div></div> 
+      else if(new_state == 2)//Sleep
+        new_page = <div></div> 
+      else if(new_state == 3)//Elect
+        new_page = <div></div> 
+      else if(new_state == 4)//Legislative
+        new_page = <div></div> 
+      else if(new_state == 5)//Executive
+        new_page = <div></div> 
+      else if(new_state == 6)//End
+        new_page = <div></div> 
+
       this.setState({ 
-        current_data: data
+        game_state: new_state,
+        current_page: new_page
       });
     }
 
     render() {
-      const { game_state, current_data } = this.state;
-      if(game_state == "lobby"){
-        return <div><Lobby data={this.state.current_data}></Lobby></div>
-      }
-      else{
-        console.log("Render div");
-        return <div></div>
-      }
+      const { current_page } = this.state;
+      return <div>{current_page}</div>
     }
   }
 

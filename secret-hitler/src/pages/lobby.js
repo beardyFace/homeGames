@@ -6,21 +6,22 @@ export default class Lobby extends React.Component {
       super(props);
       
       this.state = {
-        data:this.props.data
+        data:this.props.data,
+        socket:this.props.socket
       };
     }
     
     componentWillReceiveProps(nextProps){
       this.setState({data: nextProps.data})
+      this.setState({socket: nextProps.socket})
     }
 
     render() {
-      // const { data } = this.state;
+      const { data } = this.state;
       //Start game button if is host
       //Display who is in the lobby
       // return <div>{this.state.data}</div>
-      return <div>{this.state.data['name']}</div>
-      // return <Button caption="Join" onclick={() => {(alert("Player Joined"))}}/>;
+      return <div>{data}</div>
     }
   }
 
