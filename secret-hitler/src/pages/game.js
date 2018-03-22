@@ -31,12 +31,11 @@ export default class Game extends React.Component {
       var new_page = <div></div> 
 
       var new_state = msg['state']
-      var data = msg['data']
 
       const { socket } = this.state;
 
       if(new_state == 0)//Lobby
-        new_page = <Lobby data={data} socket={socket}></Lobby> 
+        new_page = <Lobby data={msg} socket={socket}></Lobby> 
       else if(new_state == 1)//Start
         new_page = <div></div> 
       else if(new_state == 2)//Sleep

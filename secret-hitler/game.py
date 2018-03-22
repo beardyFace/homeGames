@@ -67,6 +67,11 @@ class SecretHitler():
 
         #Executive action
 
+    def getPlayerNames(self):
+        names = []
+        for player in self.players.values():
+            names.append(player.name)
+        return names
 
     def addPlayer(self, sid, message):
         print message
@@ -74,35 +79,34 @@ class SecretHitler():
         if self.state == SecretHitler.STATE_LOBBY:
             self.players[sid] = new_player
             
-            names = []
+            names = self.getPlayerNames()
             for player in self.players.values():
-                names.append(player.name)
-
-            for player in self.players.values():
-                player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'data': names})
+                player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'names': names, 'ready':0})
         else:
-            new_player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'data': 'Game has already started sorry!!'})
+            new_player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'message': 'Game has already started sorry!!'})
 
     def removePlayer(self, sid):
         if sid in self.players:
             name = self.players[sid].name
             del self.players[sid]
-            for player in self.players.values():
-                player.reply('my_response', {'data': 'Player '+name+' disconnected', 'count': 0})
+            
+            if self.state == SecretHitler.STATE_LOBBY:
+                names = self.getPlayerNames()
+                for player in self.players.values():
+                    player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'names': names, 'ready':0})
 
     def processPlayerMessage(self, sid, message):
         # pass
-        print(message['data'])
-        command = message['data']
-
-        if command == SecretHitler.CMD_START:
-            print('starting')
-            if self.state == SecretHitler.STATE_LOBBY:
+        
+        if self.state == SecretHitler.STATE_LOBBY:
+            command = message['command']
+            if command == SecretHitler.CMD_START:
                 self.state = SecretHitler.STATE_START
+                print('starting')
 
     def messagePlayers(self, message):
         for player in self.players.values():
-            player.reply('my_response', message)
+            player.reply('game_response', message)
 
     def messageLiberals(self, message):
         for libearl_id in self.liberals:
@@ -138,11 +142,14 @@ class SecretHitler():
         while self.state == SecretHitler.STATE_LOBBY:
             ready = len(self.players) > SecretHitler.MIN_PLAYERS
             self.socketio.sleep(0.1)
+            names = self.getPlayerNames()
+
+            message = {'state':SecretHitler.STATE_LOBBY, 'names':names, 'ready':(1 if ready else 0)};
             if ready and not sent_ready_msg:
-                self.messagePlayers({'data': 'Ready to start!'})
+                self.messagePlayers(message)
                 sent_ready_msg = True
             elif not ready and sent_ready_msg:
-                self.messagePlayers({'data': 'Not ready to start!'})
+                self.messagePlayers(message)
                 sent_ready_msg = False
 
         self.messagePlayers({'data':'Starting!'})

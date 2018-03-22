@@ -31,7 +31,10 @@ def index():
 @socketio.on('join', namespace='/secret-hitler')
 def joinMessage(message):
     game.addPlayer(request.sid, message)
-    
+
+@socketio.on('player_response', namespace='/secret-hitler')
+def joinMessage(message):
+    game.processPlayerMessage(request.sid, message)
 
 @socketio.on('connect', namespace='/secret-hitler')
 def test_connect():
@@ -51,4 +54,4 @@ def test_disconnect():
     print('Client disconnected', request.sid)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=False)
+    socketio.run(app, debug=True)
