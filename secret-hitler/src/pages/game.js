@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Lobby from './lobby.js';
 import Join from './join.js';
+import Player from './player.js';
 import openSocket from 'socket.io-client';
 
 export default class Game extends React.Component {
@@ -28,26 +29,16 @@ export default class Game extends React.Component {
     handleGameResponse(msg){
       console.log("Game response");
       console.log(msg)
+      
       var new_page = <div></div> 
-
       var new_state = msg['state']
 
       const { socket } = this.state;
 
       if(new_state == 0)//Lobby
         new_page = <Lobby data={msg} socket={socket}></Lobby> 
-      else if(new_state == 1)//Start
-        new_page = <div></div> 
-      else if(new_state == 2)//Sleep
-        new_page = <div></div> 
-      else if(new_state == 3)//Elect
-        new_page = <div></div> 
-      else if(new_state == 4)//Legislative
-        new_page = <div></div> 
-      else if(new_state == 5)//Executive
-        new_page = <div></div> 
-      else if(new_state == 6)//End
-        new_page = <div></div> 
+      else
+        new_page = <Player data={msg} socket={socket}></Player> 
 
       this.setState({ 
         game_state: new_state,

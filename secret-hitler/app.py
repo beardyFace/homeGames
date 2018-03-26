@@ -33,7 +33,8 @@ def joinMessage(message):
     game.addPlayer(request.sid, message)
 
 @socketio.on('player_response', namespace='/secret-hitler')
-def joinMessage(message):
+def playerMessage(message):
+    print message
     game.processPlayerMessage(request.sid, message)
 
 @socketio.on('connect', namespace='/secret-hitler')
@@ -54,4 +55,4 @@ def test_disconnect():
     print('Client disconnected', request.sid)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=False)

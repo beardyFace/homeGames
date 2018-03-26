@@ -4,7 +4,7 @@
 from random import randint
 import random
 
-UNASSIGNED, LIBERAL, FACIST, HITLER = 'Unassigned', 'Liberal', 'Facist' , 'Hitler'
+UNASSIGNED, LIBERAL, FACIST, HITLER = 0, 1, 2 , 3
 
 class Player():
     def __init__(self, sid, socketio, name):
@@ -18,11 +18,16 @@ class Player():
     def reply(self, event, data):
         self.socketio.emit(event, data, room=self.sid, namespace='/secret-hitler')
 
+    def gameReply(self, data):
+        data['name'] = self.name
+        data['role'] = self.role
+        self.socketio.emit('game_response', data, room=self.sid, namespace='/secret-hitler')
+
     def assignRole(self, role):
         self.role = role
 
 class SecretHitler():
-    CMD_START = '0'
+    CMD_START = 0
 
     STATE_LOBBY, STATE_START, STATE_SLEEP, STATE_ELECT, STATE_LEGISLATIVE, STATE_EXECUTIVE, STATE_END = 0, 1, 2, 3, 4 ,5, 6
     MIN_PLAYERS      = 5
@@ -81,42 +86,46 @@ class SecretHitler():
             
             names = self.getPlayerNames()
             for player in self.players.values():
-                player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'names': names, 'ready':0})
+                player.gameReply({'state':SecretHitler.STATE_LOBBY, 'names': names, 'ready':0})
         else:
-            new_player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'message': 'Game has already started sorry!!'})
+            new_player.gameReply({'state':SecretHitler.STATE_LOBBY, 'message': 'Game has already started sorry!!'})
 
     def removePlayer(self, sid):
         if sid in self.players:
-            name = self.players[sid].name
             del self.players[sid]
-            
             if self.state == SecretHitler.STATE_LOBBY:
                 names = self.getPlayerNames()
                 for player in self.players.values():
-                    player.reply('game_response', {'state':SecretHitler.STATE_LOBBY, 'names': names, 'ready':0})
+                    player.gameReply({'state':SecretHitler.STATE_LOBBY, 'names': names, 'ready':0})
 
     def processPlayerMessage(self, sid, message):
         # pass
-        
         if self.state == SecretHitler.STATE_LOBBY:
             command = message['command']
             if command == SecretHitler.CMD_START:
                 self.state = SecretHitler.STATE_START
-                print('starting')
+                print('starting')        
 
     def messagePlayers(self, message):
         for player in self.players.values():
-            player.reply('game_response', message)
+            player.gameReply(message)
 
     def messageLiberals(self, message):
         for libearl_id in self.liberals:
-            self.players[libearl_id].reply('my_response', message)
+            self.players[libearl_id].gameReply(message)
 
     def messageFacists(self, message, msg_hitler=True):
         for facist_id in self.facists:
-            self.players[facist_id].reply('my_response', message)
+            self.players[facist_id].gameReply(message)
         if msg_hitler:
-            self.players[self.hitler].reply('my_response', message)
+            self.players[self.hitler].gameReply(message)
+
+    def getRoles(self, role):
+        names = []
+        for player in self.players.values():
+            if player.role == role:
+                names.append(player.name)
+        return names
 
     def run(self):
         self.lobbyState()
@@ -152,8 +161,6 @@ class SecretHitler():
                 self.messagePlayers(message)
                 sent_ready_msg = False
 
-        self.messagePlayers({'data':'Starting!'})
-
 
     def startState(self):
         num_players = len(self.players)
@@ -187,44 +194,32 @@ class SecretHitler():
             facist = random.choice(keys) 
             keys.remove(facist)
             self.facists.append(facist)
+            self.players[facist].assignRole(FACIST)
 
         #Assign liberals
         for key in keys:
             self.liberals.append(key)
+            self.players[key].assignRole(LIBERAL)
 
+        msg = {'state':SecretHitler.STATE_START}
         #notify everyone of their role
-        self.players[self.hitler].reply('my_response', {'data':'You are a Hitler, kill yourself'})
+        self.messagePlayers(msg)
 
-        for facist in self.facists:
-            self.players[facist].reply('my_response', {'data':'You are a facist scum'})
-
-        for liberal in self.liberals:
-            self.players[liberal].reply('my_response', {'data':'You are a liberal scum'})
-
-        self.socketio.sleep(3)
+        self.socketio.sleep(10)
 
         self.state = SecretHitler.STATE_SLEEP
 
     def sleepState(self):
-        self.messagePlayers({'data': 'Go to sleep!'})
-
-        self.socketio.sleep(5)
-
-        self.messageFacists({'data': 'Facists wake up!'}, msg_hitler=False)
-
-        self.socketio.sleep(10)
-
-        self.players[self.hitler].reply('my_response', {'data': 'Hitler stick your thumb out!'})
+        #send list of liberals to liberals etc
+        # liberals_names = self.getRoles(LIBERAL)
+        # self.messageLiberals({'state':SecretHitler.STATE_SLEEP, 'names':liberals_names})
+        facists_names = self.getRoles(FACIST)
+        self.messageFacists({'state':SecretHitler.STATE_SLEEP, 'names':facists_names})
 
         self.socketio.sleep(10)
 
-        self.messageFacists({'data': 'Facists go to sleep!'}, msg_hitler=True)
-
-        self.socketio.sleep(10)
-
-        self.messagePlayers({'data': 'Everyone wake up!'})
-
-        self.socketio.sleep(5)
+        empty = []
+        self.messagePlayers({'state':SecretHitler.STATE_SLEEP, 'names':empty})
 
         self.state = SecretHitler.STATE_ELECT
 
@@ -242,11 +237,11 @@ class SecretHitler():
                 self.president_index = 0
             self.president = self.players.keys()[self.president_index]
 
-        self.players[self.president].reply('my_response', {'data':'You are the president'})
+        self.players[self.president].reply('game_response', {'data':'You are the president'})
 
         self.socketio.sleep(5)
 
-        self.players[self.president].reply('my_response', {'data':'Select a chancellor'})
+        self.players[self.president].reply('game_response', {'data':'Select a chancellor'})
 
         self.chancellor = None
         while self.chancellor == None:
@@ -255,7 +250,7 @@ class SecretHitler():
         nominee = self.players[self.chancellor]
         self.players[self.chancellor].reply('my_response', {'data': nominee.name+' has been nominated for chancellor'})
 
-        messagePlayers('my_response', {'data':'Vote for '+nominee.name+' to be chancellor'})
+        self.messagePlayers({'data':'Vote for '+nominee.name+' to be chancellor'})
 
         self.votes = {}
         while len(self.votes) < len(self.players):
@@ -271,7 +266,7 @@ class SecretHitler():
             else:
                 votes_no += 1
 
-        messagePlayers('my_response', {'data': msg})
+        self.messagePlayers({'data': msg})
 
         if votes_yes > votes_no:
             #voted in

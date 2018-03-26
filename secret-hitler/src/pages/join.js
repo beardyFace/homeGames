@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Button from '../Componants/button';
 
-export default class Lobby extends React.Component {
+export default class Join extends React.Component {
     constructor(props) {
       super(props);
       
@@ -21,28 +21,20 @@ export default class Lobby extends React.Component {
       //Start game button if is host
       //Display who is in the lobby
       // return <div>{this.state.data}</div>
+      // return <div>{this.state.data['name']}</div>
 
-      var names = data['names']
-      var ready = data['ready']
+      return (
+        <div>
+            <label>
+                Name:            
+                <input value={this.state.name} onChange={(evt) => { this.setState({name:evt.target.value}) }}/> 
+            </label>
 
-      const listItems = names.map((player) =>
-        <li key={player.toString()}>
-          {player}
-        </li>
+            <Button caption="Join" onclick={() => {(
+                this.state.socket.emit('join', {'name':this.state.name})
+            )}}/>
+        </div>
       );
-
-      var go_button;
-      if (ready == 1) {
-        go_button = <Button caption="Start" onclick={() => {(
-          this.state.socket.emit('player_response', {'command':0})
-        )}}/>
-      }
-
-      return(
-      <div>
-        <ul>{listItems}</ul>
-        {go_button}
-      </div>)
     }
   }
 
