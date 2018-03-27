@@ -22,7 +22,7 @@ export default class Game extends React.Component {
       this.state = {
         socket:socket,
         game_state:"",
-        current_page:<Join data={""} socket={socket}></Join>
+        current_page:<Join data={{'msg':""}} socket={socket}></Join>
       };
     }
 
@@ -35,7 +35,9 @@ export default class Game extends React.Component {
 
       const { socket } = this.state;
 
-      if(new_state == 0)//Lobby
+      if(new_state == -1)
+        new_page = <Join data={msg} socket={socket}></Join>
+      else if(new_state == 0)//Lobby
         new_page = <Lobby data={msg} socket={socket}></Lobby> 
       else
         new_page = <Player data={msg} socket={socket}></Player> 

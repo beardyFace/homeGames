@@ -7,13 +7,16 @@ import random
 UNASSIGNED, LIBERAL, FACIST, HITLER = 0, 1, 2 , 3
 
 class Player():
+    CITIZEN, PRESIDENT, CHANCELLOR, NOM_PRES = 0, 1, 2, 3
+
     def __init__(self, sid, socketio, name):
         self.sid = sid
         self.socketio = socketio
         self.name = name
         self.role = UNASSIGNED
 
-        self.eligable = True
+        self.position = Player.CITIZEN
+        self.last_position = self.position
 
     def reply(self, event, data):
         self.socketio.emit(event, data, room=self.sid, namespace='/secret-hitler')
@@ -21,13 +24,25 @@ class Player():
     def gameReply(self, data):
         data['name'] = self.name
         data['role'] = self.role
+        data['position'] = self.position
         self.socketio.emit('game_response', data, room=self.sid, namespace='/secret-hitler')
 
     def assignRole(self, role):
         self.role = role
 
+    def assignPosition(self, assigned_position):
+        self.last_position = self.position
+        self.position = assigned_position
+
+    def eligable(self, num_players):
+        ineligable = (self.last_position == Player.CHANCELLOR or self.position == Player.NOM_PRES)
+        if num_players > 5:
+            ineligable = ineligable or self.last_position == Player.PRESIDENT
+        return not ineligable
+
 class SecretHitler():
     CMD_START = 0
+    CMD_SELECT_CHANCELLOR, CMD_VOTE = 0, 1
 
     STATE_LOBBY, STATE_START, STATE_SLEEP, STATE_ELECT, STATE_LEGISLATIVE, STATE_EXECUTIVE, STATE_END = 0, 1, 2, 3, 4 ,5, 6
     MIN_PLAYERS      = 5
@@ -50,11 +65,17 @@ class SecretHitler():
         self.fac_pol_en  = 0
         self.lib_pol_en = 0
 
+        self.election_tracker = 0
+
         self.president_index = 0
+        self.nom_pres   = None
         self.president  = None
+        self.nom_chan   = None
         self.chancellor = None
 
         self.votes = {}
+
+        self.polocies = []
 
         #5 -6 six players
         #Close your eyes
@@ -82,6 +103,11 @@ class SecretHitler():
         print message
         new_player = Player(sid, self.socketio, message['name'])
         if self.state == SecretHitler.STATE_LOBBY:
+            for player in self.players.values():
+                if player.name == new_player.name:
+                    new_player.gameReply({'state':-1, 'msg':'Name already taken!'})    
+                    return
+
             self.players[sid] = new_player
             
             names = self.getPlayerNames()
@@ -98,13 +124,28 @@ class SecretHitler():
                 for player in self.players.values():
                     player.gameReply({'state':SecretHitler.STATE_LOBBY, 'names': names, 'ready':0})
 
+    def findPlayerByName(self,name):
+        for player in self.players.values():
+            if player.name == name:
+                return player
+        return None
+
     def processPlayerMessage(self, sid, message):
         # pass
         if self.state == SecretHitler.STATE_LOBBY:
             command = message['command']
             if command == SecretHitler.CMD_START:
                 self.state = SecretHitler.STATE_START
-                print('starting')        
+                print('starting') 
+        elif self.state == SecretHitler.STATE_ELECT:
+            command = message['command']
+            if command == SecretHitler.CMD_SELECT_CHANCELLOR:
+                self.nom_chan = self.findPlayerByName(message['chancellor'])
+            elif command == SecretHitler.CMD_VOTE:
+                print('voted')
+                print(len(self.votes))
+                self.votes[sid] = message['vote']
+                
 
     def messagePlayers(self, message):
         for player in self.players.values():
@@ -205,7 +246,7 @@ class SecretHitler():
         #notify everyone of their role
         self.messagePlayers(msg)
 
-        self.socketio.sleep(10)
+        self.socketio.sleep(5)
 
         self.state = SecretHitler.STATE_SLEEP
 
@@ -223,34 +264,38 @@ class SecretHitler():
 
         self.state = SecretHitler.STATE_ELECT
 
-    def electState(self):
+    def assignNominations(self):
+        if self.president != None:
+            self.president.assignPosition(Player.CITIZEN)
+            self.president = None
 
-        if self.president == None:
-            self.president = random.choice(self.players.keys())
-            for index, player_key in enumerate(self.players.keys()):
-                if self.president == player_key:
-                    self.president_index = index
-                    break
-        else:
-            self.president_index += 1
-            if self.president_index == len(self.players):
-                self.president_index = 0
-            self.president = self.players.keys()[self.president_index]
+        if self.chancellor != None:
+            self.chancellor.assignPosition(Player.CITIZEN)
+            self.chancellor = None
 
-        self.players[self.president].reply('game_response', {'data':'You are the president'})
+        self.president_index += 1
+        if self.president_index == len(self.players):
+            self.president_index = 0
+            
+        self.nom_pres = self.players[self.players.keys()[self.president_index]]
+        
+        self.messagePlayers({'state':SecretHitler.STATE_ELECT, 'president':self.nom_pres.name})
 
-        self.socketio.sleep(5)
+        nominees = self.getPlayerNames()
+        for player in self.players.values():
+            if not player.eligable(len(self.players)):
+                nominees.remove(player.name)
 
-        self.players[self.president].reply('game_response', {'data':'Select a chancellor'})
+        self.nom_pres.gameReply({'state':SecretHitler.STATE_ELECT, 'nominees':nominees})
 
-        self.chancellor = None
-        while self.chancellor == None:
+        self.nom_chan = None
+        while self.nom_chan == None:
             self.socketio.sleep(0.1)
 
-        nominee = self.players[self.chancellor]
-        self.players[self.chancellor].reply('my_response', {'data': nominee.name+' has been nominated for chancellor'})
+    def electState(self):
+        self.assignNominations()
 
-        self.messagePlayers({'data':'Vote for '+nominee.name+' to be chancellor'})
+        self.messagePlayers({'state':SecretHitler.STATE_ELECT, 'nominee':self.nom_chan.name})
 
         self.votes = {}
         while len(self.votes) < len(self.players):
@@ -258,24 +303,41 @@ class SecretHitler():
 
         votes_yes = 0
         votes_no  = 0
-        msg = ''
+        results = []
         for player_id, vote in self.votes.iteritems():
-            msg += self.players[player_id].name + " voted: " + vote +"\n"
-            if vote == 'yes':
+            results.append([self.players[player_id].name, vote])
+            if vote == 1:
                 votes_yes += 1
             else:
                 votes_no += 1
-
-        self.messagePlayers({'data': msg})
+        
+        self.messagePlayers({'state':SecretHitler.STATE_ELECT, 'results':results})
+        self.socketio.sleep(10)
 
         if votes_yes > votes_no:
             #voted in
-            pass
-        elif votes_yes == votes_no:
-            #tie
-            pass
+            self.chancellor = self.nom_chan
+            self.president = self.nom_pres
+            
+            self.chancellor.assignPosition(Player.CHANCELLOR)
+            self.president.assignPosition(Player.PRESIDENT)
+            
+            # If three or more Fascist Policies have been enacted already:
+            #     Ask if the new Chancellor is Hitler. If so, the game is over and the Fascists win. 
+            #     Otherwise, other players know for sure the Chancellor is not Hitler.
+            # Else 
+            #   Proceed as usual to the Legislative Session.
         else:
             #fail
+            # The vote fails. The Presidential Candidate misses this chance to be elected, and the President placard moves clockwise to the next player. 
+            # The Election Tracker is advanced by one Election.
+            
+            # Election Tracker: If the group rejects three governments in a row, the country is thrown into chaos. 
+            #     Immediately reveal the Policy on top of the Policy deck and enact it. 
+            #     Any power granted by this Policy is ignored, but the ElectionTracker resets, and existing term-limits are forgotten. ​
+            #     All players ​ become eligible to hold the office of Chancellor for the next Election.
+            #     If there are fewer than three tiles remaining in the Policy deck at this point, shuffle them with the Discard pile to create a new Policy deck.
+
             pass            
 
     def legislativeState(self): 

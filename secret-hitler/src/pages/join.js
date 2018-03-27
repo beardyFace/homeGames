@@ -23,11 +23,13 @@ export default class Join extends React.Component {
       // return <div>{this.state.data}</div>
       // return <div>{this.state.data['name']}</div>
 
+      var msg = data['msg']
       return (
         <div>
             <label>
                 Name:            
                 <input value={this.state.name} onChange={(evt) => { this.setState({name:evt.target.value}) }}/> 
+                {msg}
             </label>
 
             <Button caption="Join" onclick={() => {(
