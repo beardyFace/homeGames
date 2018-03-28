@@ -51,11 +51,11 @@ export default class Player extends React.Component {
         const listItems = names.map((player) =>
           <li key={player.toString()}>
             <Button caption={player.toString()} onclick={() => {(
-              this.state.socket.emit('player_response', {'command':0, 'chancellor':player.toString()})
+              this.state.socket.emit('player_response', {'chancellor':player.toString()})
             )}}/>
           </li>
         );
-
+        
         // this.state.socket
         return <ul>{listItems}</ul>
       }
@@ -66,10 +66,10 @@ export default class Player extends React.Component {
             <div>
               <div>Vote {nominee_name} for chancellor?</div> 
               <Button caption="Yes" onclick={() => {(
-                this.state.socket.emit('player_response', {'command':1, 'vote':1})
+                this.state.socket.emit('player_response', {'vote':1})
               )}}/>
               <Button caption="No" onclick={() => {(
-                this.state.socket.emit('player_response', {'command':1, 'vote':0})
+                this.state.socket.emit('player_response', {'vote':0})
               )}}/>
             </div>
           );
@@ -92,6 +92,23 @@ export default class Player extends React.Component {
       return <div>{president_name} is the president, selecting chancellor</div>
     }
 
+    renderLegislative(data){
+      if('polocies' in data){
+        var polocies = data['polocies']
+        
+        const listItems = polocies.map((policy) =>
+          <li key={policy.toString()}>
+            <Button caption={policy.toString()} onclick={() => {(
+              this.state.socket.emit('player_response', {'choice':policy.toString()})
+            )}}/>
+          </li>
+        );
+        return <ul>{listItems}</ul>
+      }
+      var president_name = data['president']
+      return <div>{president_name} is the president, selecting polocies now</div>
+    }
+
     render() {
       const { data } = this.state;
       
@@ -104,7 +121,7 @@ export default class Player extends React.Component {
       else if(new_state == 3)//Elect
         state_display = this.renderElect(data)
       else if(new_state == 4)//Legislative
-        state_display = <div></div> 
+        state_display = this.renderLegislative(data)
       else if(new_state == 5)//Executive
         state_display = <div></div> 
       else if(new_state == 6)//End

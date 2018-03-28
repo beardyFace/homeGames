@@ -49,6 +49,8 @@ class SecretHitler():
     MAX_PLAYERS      = 10
     FACIST_POLICIES  = 11
     LIBERAL_POLICIES = 6
+    F_POL = 1
+    L_POL = 0
 
     def __init__(self, socketio):
         self.socketio = socketio
@@ -74,24 +76,16 @@ class SecretHitler():
         self.chancellor = None
 
         self.votes = {}
-
+        self.choices = []
+            
         self.polocies = []
+        for i in range(0, SecretHitler.FACIST_POLICIES):
+            self.polocies.append(SecretHitler.F_POL)
 
-        #5 -6 six players
-        #Close your eyes
-        #F and H open eyes and acknowledge each other
-        #Close eyes
-        #Everyone open eyes
-
-        #7 - 10
-        #F know H but H not know F
-
-        #Rounds
-        #Election
-
-        #Legislative
-
-        #Executive action
+        for i in range(0, SecretHitler.LIBERAL_POLICIES):
+            self.polocies.append(SecretHitler.L_POL)
+        
+        random.shuffle(self.polocies)
 
     def getPlayerNames(self):
         names = []
@@ -138,14 +132,13 @@ class SecretHitler():
                 self.state = SecretHitler.STATE_START
                 print('starting') 
         elif self.state == SecretHitler.STATE_ELECT:
-            command = message['command']
-            if command == SecretHitler.CMD_SELECT_CHANCELLOR:
+            if 'chancellor' in message:
                 self.nom_chan = self.findPlayerByName(message['chancellor'])
-            elif command == SecretHitler.CMD_VOTE:
-                print('voted')
-                print(len(self.votes))
+            if 'vote' in message:
                 self.votes[sid] = message['vote']
-                
+        elif self.state == SecretHitler.STATE_LEGISLATIVE:
+            if 'choice' in message:
+                self.choices.append(message['choice'])
 
     def messagePlayers(self, message):
         for player in self.players.values():
@@ -182,6 +175,9 @@ class SecretHitler():
 
             elif self.state == SecretHitler.STATE_ELECT:
                 self.electState()
+
+            elif self.state == SecretHitler.STATE_LEGISLATIVE:
+                self.legislativeState()
 
             elif self.state == SecretHitler.STATE_END:
                 self.endState()
@@ -257,7 +253,7 @@ class SecretHitler():
         facists_names = self.getRoles(FACIST)
         self.messageFacists({'state':SecretHitler.STATE_SLEEP, 'names':facists_names})
 
-        self.socketio.sleep(10)
+        self.socketio.sleep(5)
 
         empty = []
         self.messagePlayers({'state':SecretHitler.STATE_SLEEP, 'names':empty})
@@ -278,6 +274,7 @@ class SecretHitler():
             self.president_index = 0
             
         self.nom_pres = self.players[self.players.keys()[self.president_index]]
+        self.nom_pres.assignPosition(Player.NOM_PRES)
         
         self.messagePlayers({'state':SecretHitler.STATE_ELECT, 'president':self.nom_pres.name})
 
@@ -312,9 +309,10 @@ class SecretHitler():
                 votes_no += 1
         
         self.messagePlayers({'state':SecretHitler.STATE_ELECT, 'results':results})
-        self.socketio.sleep(10)
+        self.socketio.sleep(5)
 
         if votes_yes > votes_no:
+            print("Vote passed")
             #voted in
             self.chancellor = self.nom_chan
             self.president = self.nom_pres
@@ -322,26 +320,42 @@ class SecretHitler():
             self.chancellor.assignPosition(Player.CHANCELLOR)
             self.president.assignPosition(Player.PRESIDENT)
             
+            if self.fac_pol_en > 2:
+                if self.chancellor.role == HITLER:
+                    self.messagePlayers({'state':SecretHitler.STATE_END, 'winners':1})
+                    self.state = SecretHitler.STATE_END
+            else:
+                self.state = SecretHitler.STATE_LEGISLATIVE
             # If three or more Fascist Policies have been enacted already:
             #     Ask if the new Chancellor is Hitler. If so, the game is over and the Fascists win. 
             #     Otherwise, other players know for sure the Chancellor is not Hitler.
             # Else 
             #   Proceed as usual to the Legislative Session.
         else:
-            #fail
-            # The vote fails. The Presidential Candidate misses this chance to be elected, and the President placard moves clockwise to the next player. 
-            # The Election Tracker is advanced by one Election.
-            
-            # Election Tracker: If the group rejects three governments in a row, the country is thrown into chaos. 
-            #     Immediately reveal the Policy on top of the Policy deck and enact it. 
-            #     Any power granted by this Policy is ignored, but the ElectionTracker resets, and existing term-limits are forgotten. ​
-            #     All players ​ become eligible to hold the office of Chancellor for the next Election.
-            #     If there are fewer than three tiles remaining in the Policy deck at this point, shuffle them with the Discard pile to create a new Policy deck.
-
+            #Fail
             pass            
 
     def legislativeState(self): 
-        pass
+        print("Legislative")
+    
+        self.messagePlayers({'state':SecretHitler.STATE_LEGISLATIVE,'president':self.president.name})
+        polocies = self.polocies[0:3]
+        self.polocies = self.polocies[3:]
+        self.president.gameReply({'state':SecretHitler.STATE_LEGISLATIVE, 'polocies':polocies})
+        
+        self.choices = []
+        while(len(self.choices) < 2):
+            self.socketio.sleep(0.1)
+
+        self.chancellor.gameReply({'state':SecretHitler.STATE_LEGISLATIVE, 'polocies':self.choices})
+
+        self.choices = []
+        while(len(self.choices) < 1):
+            self.socketio.sleep(0.1)
+
+        
+
+        self.state = SecretHitler.STATE_END
 
     def exectutiveState(self):
         pass 
