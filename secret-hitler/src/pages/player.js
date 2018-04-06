@@ -109,6 +109,10 @@ export default class Player extends React.Component {
       return <div>{president_name} is the president, selecting polocies now</div>
     }
 
+    renderExecutive(data){
+      return <div></div>
+    }
+
     render() {
       const { data } = this.state;
       
@@ -123,7 +127,7 @@ export default class Player extends React.Component {
       else if(new_state == 4)//Legislative
         state_display = this.renderLegislative(data)
       else if(new_state == 5)//Executive
-        state_display = <div></div> 
+        state_display = this.renderExecutive(data)
       else if(new_state == 6)//End
         state_display = <div></div> 
 

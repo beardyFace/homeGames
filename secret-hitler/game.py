@@ -45,6 +45,8 @@ class SecretHitler():
     CMD_SELECT_CHANCELLOR, CMD_VOTE = 0, 1
 
     STATE_LOBBY, STATE_START, STATE_SLEEP, STATE_ELECT, STATE_LEGISLATIVE, STATE_EXECUTIVE, STATE_END = 0, 1, 2, 3, 4 ,5, 6
+    EXEC_NONE, EXEC_INV, EXEC_ELE, EXEC_PEEK, EXEC_KILL, EXEC_VETO = 0, 1, 2, 3, 4, 5
+
     MIN_PLAYERS      = 5
     MAX_PLAYERS      = 10
     FACIST_POLICIES  = 11
@@ -78,15 +80,37 @@ class SecretHitler():
         self.votes = {}
         self.choices = []
             
+        self.exectuve_actions = None
         self.polocies = self.createPolocies()
         
+    def createExecutiveActions(self, num_players):
+        exectuve_actions = []
+        if num_players < 7:
+            exectuve_actions.append(SecretHitler.EXEC_NONE)
+            exectuve_actions.append(SecretHitler.EXEC_NONE)
+            exectuve_actions.append(SecretHitler.EXEC_PEEK)
+        elif num_players < 9:
+            exectuve_actions.append(SecretHitler.EXEC_NONE)
+            exectuve_actions.append(SecretHitler.EXEC_PEEK) 
+            exectuve_actions.append(SecretHitler.EXEC_ELE)
+        else:
+            exectuve_actions.append(SecretHitler.EXEC_PEEK)
+            exectuve_actions.append(SecretHitler.EXEC_PEEK) 
+            exectuve_actions.append(SecretHitler.EXEC_ELE)
+
+        exectuve_actions.append(SecretHitler.EXEC_ELE)
+        exectuve_actions.append(SecretHitler.EXEC_KILL)
+        exectuve_actions.append(SecretHitler.EXEC_KILL)
+        exectuve_actions.append(SecretHitler.EXEC_NONE)
+        return exectuve_actions
+
     def createPolocies(self):
         polocies = []
-        for i in range(0, SecretHitler.FACIST_POLICIES):
-            self.polocies.append(SecretHitler.F_POL)
+        for _ in range(0, SecretHitler.FACIST_POLICIES):
+            polocies.append(SecretHitler.F_POL)
 
-        for i in range(0, SecretHitler.LIBERAL_POLICIES):
-            self.polocies.append(SecretHitler.L_POL)
+        for _ in range(0, SecretHitler.LIBERAL_POLICIES):
+            polocies.append(SecretHitler.L_POL)
         
         random.shuffle(polocies)
         return polocies
@@ -224,6 +248,8 @@ class SecretHitler():
             self.num_liberals = 6
             self.num_facists = 3
 
+        self.exectuve_actions = self.createExecutiveActions(num_players)
+        
         keys = self.players.keys()
 
         #Assign hitler and the facists
@@ -365,18 +391,17 @@ class SecretHitler():
             if self.fac_pol_en > 5:
                 self.messagePlayers({'state':SecretHitler.STATE_END,'winners':FACIST})
                 self.state = SecretHitler.STATE_END
-
-        else policy == SecretHitler.L_POL:
+            else:
+                self.state = SecretHitler.STATE_EXECUTIVE
+        elif policy == SecretHitler.L_POL:
             self.lib_pol_en += 1
             if self.lib_pol_en > 4:
                 print("Liberals win!")
                 self.messagePlayers({'state':SecretHitler.STATE_END,'winners':LIBERAL})
                 self.state = SecretHitler.STATE_END
-            
-        # self.state = SecretHitler.STATE_END
-
+                                
     def exectutiveState(self):
-        pass 
+        pass
 
     def endState(self):
         pass
