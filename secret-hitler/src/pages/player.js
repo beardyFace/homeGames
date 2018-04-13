@@ -109,8 +109,93 @@ export default class Player extends React.Component {
       return <div>{president_name} is the president, selecting polocies now</div>
     }
 
+    renderInvestigate(data){
+      if('names' in data){
+        var names = data['names']
+        const listItems = names.map((player) =>
+          <li key={player.toString()}>
+            <Button caption={player.toString()} onclick={() => {(
+              this.state.socket.emit('player_response', {'player':player.toString()})
+            )}}/>
+          </li>
+        );
+        return <ul>{listItems}</ul>
+      }
+
+      if('info' in data){
+        var name = data['info'][0]
+        var role = data['info'][1]
+        return <div>{name} is a {role}</div>  
+      }
+      
+      return <div>President is Investigating a player</div>  
+    }
+
+    renderPresElect(data){
+      if('names' in data){
+        var names = data['names']
+        const listItems = names.map((player) =>
+          <li key={player.toString()}>
+            <Button caption={player.toString()} onclick={() => {(
+              this.state.socket.emit('player_response', {'player':player.toString()})
+            )}}/>
+          </li>
+        );
+        return <ul>{listItems}</ul>
+      }
+
+      return <div>President is selecting the next president</div>
+    }
+
+    renderPeek(data){
+      if('polocies' in data){
+        var policies = data['polocies']
+        const listItems = policies.map((policy) =>
+        <li key={policy.toString()}>
+          {policy}
+        </li>
+      );
+      return <ul>{listItems}</ul>
+      }
+      return <div>President is peeking at the next three polocies</div>
+    }
+
+    renderKill(data){
+      if('names' in data){
+        var names = data['names']
+        const listItems = names.map((player) =>
+          <li key={player.toString()}>
+            <Button caption={player.toString()} onclick={() => {(
+              this.state.socket.emit('player_response', {'player':player.toString()})
+            )}}/>
+          </li>
+        );
+        return <ul>{listItems}</ul>
+      }
+      return <div>Preident is killing a player</div>
+    }
+
     renderExecutive(data){
-      return <div></div>
+
+      if('action' in data){
+        // EXEC_NONE, EXEC_INV, EXEC_ELE, EXEC_PEEK, EXEC_KILL, EXEC_VETO = 0, 1, 2, 3, 4, 5
+        var action = data['action']
+        switch(action){
+          case 0://None
+            return <div>None</div>
+          case 1://Investigate
+            return this.renderInvestigate(data)
+          case 2://Elect
+            return this.renderPresElect(data)
+          case 3://Peek
+            return this.renderPeek(data)
+          case 4://Kill
+            return this.renderKill(data)
+          default:
+            return <div>Shouldn't be seeing this...awkward</div>
+        }
+      }
+      return <div>president is taking an action</div>
     }
 
     render() {
@@ -120,6 +205,7 @@ export default class Player extends React.Component {
 
       var new_state = data['state']
       var state_display = <div></div>
+
       if(new_state == 2)//Sleep
         state_display = this.renderSleep(data)
       else if(new_state == 3)//Elect
